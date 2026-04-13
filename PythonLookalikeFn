@@ -1,0 +1,176 @@
+import math
+
+
+def standard_normal_cdf(z):
+    """Approximate the standard normal CDF using the error function."""
+    return 0.5 * (1 + math.erf(z / math.sqrt(2)))
+
+
+def get_age_probability(age):
+    """Calculate P_A(A_0) - probability someone is within age tolerance."""
+    mu = 39.71
+    sigma = 23.74
+    tolerance = 0.202 * (age ** 1.1)
+
+    z_upper = (age + tolerance - mu) / sigma
+    z_lower = (age - tolerance - mu) / sigma
+
+    return standard_normal_cdf(z_upper) - standard_normal_cdf(z_lower)
+
+
+def get_gender_probability(gender):
+    """Calculate P_G(G_0) - probability of matching gender."""
+    return 0.49 if gender.lower() == 'male' else 0.51
+
+
+def get_bmi_probability(bmi):
+    """Calculate P_W(W_0) - probability someone is within BMI tolerance."""
+    mu = 28.33
+    sigma = 6.37
+    tolerance = 2
+
+    z_upper = (bmi + tolerance - mu) / sigma
+    z_lower = (bmi - tolerance - mu) / sigma
+
+    return standard_normal_cdf(z_upper) - standard_normal_cdf(z_lower)
+
+
+def get_ethnicity_probability(ethnicity):
+    """Calculate P_E(E_0) - probability of matching ethnicity."""
+    probabilities = {
+        'white': 0.817,
+        'asian': 0.093,
+        'black': 0.040,
+        'mixed': 0.029,
+        'other': 0.021
+    }
+    return probabilities.get(ethnicity.lower(), 0.021)
+
+
+def get_hair_probability(hair_colour):
+    """Calculate P_H(H_0) - probability of matching hair colour."""
+    natural_probs = {
+        'blonde': 0.29,
+        'brown': 0.48,
+        'black': 0.18,
+        'red': 0.05
+    }
+
+    if hair_colour.lower() in natural_probs:
+        return 0.82 * natural_probs[hair_colour.lower()]
+    elif hair_colour.lower() == 'natural dye':
+        return 0.18
+    else:  # Unnatural colours (blue, pink, green, purple, etc.)
+        return 0.036
+
+
+def get_location_multiplier(location):
+    """Get λ_L based on location type."""
+    multipliers = {
+        'city': 1,
+        'urban': 0.2,
+        'suburban': 0.1,
+        'rural': 0.01
+    }
+    return multipliers.get(location.lower(), 0.05)
+
+
+def get_age_activity_multiplier(age):
+    """Get λ_A based on age group."""
+    if 16 <= age < 25:
+        return 1.0
+    elif 25 <= age < 65:
+        return 0.6
+    else:
+        return 0.2
+
+
+def calculate_bmi(weight_kg, height_m):
+    """Calculate BMI from weight and height."""
+    return weight_kg / (height_m ** 2)
+
+
+def calculate_lookalikes():
+    """Main function to gather inputs and calculate expected lookalikes per year."""
+    print("=" * 60)
+    print("  LOOKALIKE PROBABILITY CALCULATOR")
+    print("  Based on UK population statistics")
+    print("=" * 60)
+    print()
+
+    # Gather inputs
+    age = int(input("Enter your age: "))
+    gender = input("Enter your gender (male/female): ")
+
+    print("\nFor BMI calculation:")
+    weight = float(input("Enter your weight in kg: "))
+    height = float(input("Enter your height in metres (e.g., 1.75): "))
+    bmi = calculate_bmi(weight, height)
+    print(f"Your BMI: {bmi:.1f}")
+
+    print("\nEthnicity options: white, asian, black, mixed, other")
+    ethnicity = input("Enter your ethnicity: ")
+
+    print("\nHair colour options:")
+    print("  Natural: blonde, brown, black, red")
+    print("  Dyed natural: 'natural dye'")
+    print("  Unnatural: blue, pink, green, purple, other")
+    hair = input("Enter your hair colour: ")
+
+    print("\nLocation options: city, urban, suburban, rural")
+    location = input("Where do you primarily spend time? ")
+
+    # Calculate individual probabilities
+    p_age = get_age_probability(age)
+    p_gender = get_gender_probability(gender)
+    p_bmi = get_bmi_probability(bmi)
+    p_ethnicity = get_ethnicity_probability(ethnicity)
+    p_hair = get_hair_probability(hair)
+
+    # Calculate encounter rate
+    lambda_0 = 40  # Base encounters per day
+    lambda_L = get_location_multiplier(location)
+    lambda_A = get_age_activity_multiplier(age)
+    daily_encounters = lambda_0 * lambda_L * lambda_A
+
+    # Combined probability
+    p_total = p_age * p_gender * p_bmi * p_ethnicity * p_hair
+
+    # Expected lookalikes per year
+    expected_per_year = 365 * daily_encounters * p_total
+
+    # Display results
+    print("\n" + "=" * 60)
+    print("  RESULTS")
+    print("=" * 60)
+    print("\nIndividual Probabilities:")
+    print(f"  Age match:       {p_age:.4f} ({p_age * 100:.2f}%)")
+    print(f"  Gender match:    {p_gender:.4f} ({p_gender * 100:.2f}%)")
+    print(f"  BMI match:       {p_bmi:.4f} ({p_bmi * 100:.2f}%)")
+    print(f"  Ethnicity match: {p_ethnicity:.4f} ({p_ethnicity * 100:.2f}%)")
+    print(f"  Hair match:      {p_hair:.4f} ({p_hair * 100:.2f}%)")
+    print(f"\nCombined probability: {p_total:.6f} ({p_total * 100:.4f}%)")
+    print(f"  (1 in {1 / p_total:,.0f} people)")
+
+    print("\nEncounter Rate:")
+    print(f"  Base daily encounters (λ₀): {lambda_0}")
+    print(f"  Location multiplier (λ_L):  {lambda_L}")
+    print(f"  Age activity multiplier (λ_A): {lambda_A}")
+    print(f"  Effective daily encounters: {daily_encounters:.0f}")
+    print(f"  Annual encounters: {365 * daily_encounters:,.0f}")
+
+    print("\n" + "-" * 60)
+    print(f"  EXPECTED LOOKALIKES PER YEAR: {expected_per_year:.2f}")
+    print("-" * 60)
+
+    if expected_per_year < 1:
+        days_per_lookalike = 365 / expected_per_year
+        print(f"  On average, you'd encounter a lookalike every {days_per_lookalike:.0f} days")
+    else:
+        print(f"  On average, you'd encounter ~{expected_per_year:.0f} lookalikes per year")
+
+    return expected_per_year
+
+
+if __name__ == "__main__":
+    calculate_lookalikes()
